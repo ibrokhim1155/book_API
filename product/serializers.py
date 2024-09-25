@@ -1,34 +1,101 @@
+from django.db.models import Avg
 from rest_framework import serializers
-from .models import Category, Product
+from product.models import (
+    Category, Group, Product,
+    ProductAttributeValue, ProductImage,
+    Comment
+)
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    full_image_url = serializers.SerializerMethodField()
-    count = serializers.SerializerMethodField(method_name='groups_count')
+    count = serializers.SerializerMethodField()
 
-    def groups_count(self, obj):
+    def get_count(self, obj):
         return obj.groups.count()
-
-    def get_full_image_url(self, instance):
-        if instance.image:
-            request = self.context.get('request')
-            return request.build_absolute_uri(instance.image.url)
-        return None
 
     class Meta:
         model = Category
-        fields = ['id', 'title', 'full_image_url', 'count']
+        fields = ['id', 'title', 'image', 'count']
+        read_only_fields = ['id', 'slug']
 
 
-class ProductSerializer(serializers.ModelSerializer):
-    full_image_url = serializers.SerializerMethodField()
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['image']
 
-    def get_full_image_url(self, instance):
-        if instance.image:
-            request = self.context.get('request')
-            return request.build_absolute_uri(instance.image.url)
-        return None
+
+class ProductCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['id', 'rating', 'user', 'image', 'text']
+        read_only_fields = ['id']
+
+
+class ProductAttributeValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttributeValue
+        fields = ['key', 'value']
+
+    def to_representation(self, instance):
+        return {instance.key.key: instance.value.value}
+
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    attributes = ProductAttributeValueSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+    comments = ProductCommentSerializer(many=True, read_only=True)
+    user_like = serializers.SerializerMethodField()
+
+    def get_user_like(self, obj):
+        request = self.context.get('request')
+        return request.user.is_authenticated and obj.users_like.filter(id=request.user.id).exists()
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'description', 'price', 'quantity', 'slug', 'group', 'full_image_url']
+        fields = ['id', 'title', 'description', 'price', 'discount', 'quantity', 'slug', 'user_like', 'images',
+                  'attributes', 'comments']
+        read_only_fields = ['id', 'slug', 'user_like']
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    avg_rating = serializers.SerializerMethodField()
+    user_like = serializers.SerializerMethodField()
+    count_comments = serializers.SerializerMethodField()
+
+    def get_count_comments(self, obj):
+        return obj.comments.count()
+
+    def get_avg_rating(self, obj):
+        rating = obj.comments.aggregate(avg=Avg('rating'))['avg']
+        return rating if rating else 0
+
+    def get_user_like(self, obj):
+        request = self.context.get('request')
+        return request.user.is_authenticated and obj.users_like.filter(id=request.user.id).exists()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'price', 'discount', 'quantity', 'description', 'slug', 'avg_rating', 'user_like',
+                  'count_comments', 'group']
+        read_only_fields = ['id', 'slug', 'user_like']
+
+
+class GroupSerializer(serializers.ModelSerializer):
+    products = ProductSerializer(many=True, read_only=True)
+    image = serializers.ImageField(required=False)
+
+    class Meta:
+        model = Group
+        fields = ['id', 'title', 'image', 'slug', 'category', 'products']
+        read_only_fields = ['id', 'slug']
+
+
+class CategoriesGroupsProductsSerializer(serializers.ModelSerializer):
+    groups = GroupSerializer(many=True, read_only=True)
+    image = serializers.ImageField(required=False)
+
+    class Meta:
+        model = Category
+        fields = ['id', 'title', 'image', 'slug', 'groups']
+        read_only_fields = ['id', 'slug']
