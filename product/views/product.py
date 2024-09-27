@@ -1,7 +1,7 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from product import serializers
-from product.models import Product
+from product.models import Product, AttributeKey, AttributeValue, ProductAttributeValue
 from django.http import Http404
 
 
@@ -11,32 +11,22 @@ class ProductsListApiView(generics.ListCreateAPIView):
 
 
 class ProductDetailApiView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Product.objects.all()
     serializer_class = serializers.ProductDetailSerializer
     lookup_field = 'slug'
 
-    def get_queryset(self):
-        return Product.objects.all()
-
     def get_object(self):
-        slug = self.kwargs.get(self.lookup_field)
         try:
-            return Product.objects.get(slug=slug)
+            return super().get_object()
         except Product.DoesNotExist:
-            raise Http404("Not found.")
-
-    def get(self, request, *args, **kwargs):
-        product = self.get_object()
-        serializer = self.get_serializer(product)
-        return Response(serializer.data)
+            raise Http404("Product not found.")
 
     def put(self, request, *args, **kwargs):
         product = self.get_object()
         serializer = self.get_serializer(product, data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def delete(self, request, *args, **kwargs):
         product = self.get_object()
@@ -44,6 +34,21 @@ class ProductDetailApiView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ProductAddView(generics.ListCreateAPIView):
+class ProductAddView(generics.CreateAPIView):
     queryset = Product.objects.all()
     serializer_class = serializers.ProductSerializer
+
+
+class AttributeKeyListApiView(generics.ListCreateAPIView):
+    queryset = AttributeKey.objects.all()
+    serializer_class = serializers.AttributeKeySerializer
+
+
+class AttributeValueListApiView(generics.ListCreateAPIView):
+    queryset = AttributeValue.objects.all()
+    serializer_class = serializers.AttributeValueSerializer
+
+
+class AttributeKeyValueListApiView(generics.ListCreateAPIView):
+    queryset = ProductAttributeValue.objects.all()
+    serializer_class = serializers.AttributeKeyValueSerializer

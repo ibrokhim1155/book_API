@@ -3,8 +3,6 @@ from django.db import models
 from django.template.defaultfilters import slugify
 
 
-# Create your models here.
-
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -50,7 +48,8 @@ class Product(BaseModel):
     quantity = models.IntegerField()
     slug = models.SlugField(blank=True)
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, related_name='products')
-    users_like = models.ManyToManyField(User, related_name='products', blank=True)  # null=True olib tashlandi
+    users_like = models.ManyToManyField(User, related_name='products_likes', blank=True)
+    is_active = models.BooleanField(default=True)  # is_active maydoni qo'shildi
 
     @property
     def discounted_price(self):
@@ -83,8 +82,8 @@ class AttributeValue(models.Model):
 
 class ProductAttributeValue(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, related_name='attributes')
-    key = models.ForeignKey(AttributeKey, on_delete=models.SET_NULL, null=True, related_name='attributes')
-    value = models.ForeignKey(AttributeValue, on_delete=models.SET_NULL, null=True, related_name='attributes')
+    key = models.ForeignKey(AttributeKey, on_delete=models.SET_NULL, null=True, related_name='attribute_keys')
+    value = models.ForeignKey(AttributeValue, on_delete=models.SET_NULL, null=True, related_name='attribute_values')
 
     def __str__(self):
         return f'{self.product}, {self.key}, {self.value}'
@@ -92,7 +91,7 @@ class ProductAttributeValue(models.Model):
 
 class ProductImage(BaseModel):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, related_name='images')
-    image = models.ImageField(upload_to='product', default=None)
+    image = models.ImageField(upload_to='product', blank=True)  # default=None olib tashlandi
     is_primary = models.BooleanField(default=False)
 
 
@@ -107,7 +106,7 @@ class Comment(BaseModel):
 
     rating = models.IntegerField(choices=RatingChoices.choices, default=RatingChoices.ZERO.value)
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, related_name='comments')
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='user_comments')
     text = models.TextField()
     image = models.FileField(upload_to='comments', null=True, blank=True)
 

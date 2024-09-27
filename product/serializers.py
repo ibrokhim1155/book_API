@@ -3,7 +3,7 @@ from rest_framework import serializers
 from product.models import (
     Category, Group, Product,
     ProductAttributeValue, ProductImage,
-    Comment
+    Comment, AttributeKey, AttributeValue
 )
 
 
@@ -49,7 +49,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     def get_user_like(self, obj):
         request = self.context.get('request')
-        return request.user.is_authenticated and obj.users_like.filter(id=request.user.id).exists()
+        if request and request.user.is_authenticated:
+            return obj.users_like.filter(id=request.user.id).exists()
+        return False
 
     class Meta:
         model = Product
@@ -67,12 +69,13 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.comments.count()
 
     def get_avg_rating(self, obj):
-        rating = obj.comments.aggregate(avg=Avg('rating'))['avg']
-        return rating if rating else 0
+        return obj.comments.aggregate(avg=Avg('rating'))['avg'] or 0
 
     def get_user_like(self, obj):
         request = self.context.get('request')
-        return request.user.is_authenticated and obj.users_like.filter(id=request.user.id).exists()
+        if request and request.user.is_authenticated:
+            return obj.users_like.filter(id=request.user.id).exists()
+        return False
 
     class Meta:
         model = Product
@@ -99,3 +102,31 @@ class CategoriesGroupsProductsSerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'title', 'image', 'slug', 'groups']
         read_only_fields = ['id', 'slug']
+
+
+class AttributeKeySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttributeKey
+        fields = '__all__'
+
+
+class AttributeValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttributeValue
+        fields = '__all__'
+
+
+class AttributeKeyValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttributeValue
+        exclude = ('id', 'product', 'key', 'value')
+
+    def to_representation(self, instance):
+        context = super().to_representation(instance)
+        context.update({
+            'key_id': instance.key.id,
+            'key_name': instance.key.key,
+            'value_id': instance.value.id,
+            'value_name': instance.value.value
+        })
+        return context
