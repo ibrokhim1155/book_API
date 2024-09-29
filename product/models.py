@@ -49,7 +49,7 @@ class Product(BaseModel):
     slug = models.SlugField(blank=True)
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, related_name='products')
     users_like = models.ManyToManyField(User, related_name='products_likes', blank=True)
-    is_active = models.BooleanField(default=True)  # is_active maydoni qo'shildi
+    is_active = models.BooleanField(default=True)
 
     @property
     def discounted_price(self):
