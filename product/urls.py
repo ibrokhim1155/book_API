@@ -11,6 +11,5 @@ urlpatterns = [
     path('product/view/<slug:slug>/', product.ProductDetailApiView.as_view(), name='product-detail'),
     path('add-product/', product.ProductAddView.as_view(), name='add-product'),
     path('product-attribute-key/', product.AttributeKeyListApiView.as_view(), name='product-attribute-key'),
-    path('product-attribute-value/', product.AttributeValueListApiView.as_view(), name='product-attribute-value'),
-    path('product-attribute-key-value/', product.AttributeKeyValueListApiView.as_view(), name='product-attribute-key-value'),
+
 ]

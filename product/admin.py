@@ -20,9 +20,9 @@ class GroupAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'price', 'quantity', 'group', 'is_active')  # is_active qo'shildi
+    list_display = ('id', 'title', 'price', 'quantity', 'group', 'is_active')
     search_fields = ('title', 'description')
-    list_filter = ('group', 'is_active')  # is_active qo'shildi
+    list_filter = ('group', 'is_active')
     ordering = ('title',)
     prepopulated_fields = {'slug': ('title',)}
     readonly_fields = ('created_at', 'updated_at')

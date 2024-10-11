@@ -8,14 +8,14 @@ from product.models import (
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    count = serializers.SerializerMethodField()
+    groups_count = serializers.SerializerMethodField()
 
-    def get_count(self, obj):
+    def get_groups_count(self, obj):
         return obj.groups.count()
 
     class Meta:
         model = Category
-        fields = ['id', 'title', 'image', 'count']
+        fields = ['id', 'title', 'image', 'groups_count']
         read_only_fields = ['id', 'slug']
 
 
@@ -38,7 +38,9 @@ class ProductAttributeValueSerializer(serializers.ModelSerializer):
         fields = ['key', 'value']
 
     def to_representation(self, instance):
-        return {instance.key.key: instance.value.value}
+        if instance.key and instance.value:
+            return {instance.key.key: instance.value.value}
+        return None
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
@@ -48,7 +50,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     user_like = serializers.SerializerMethodField()
 
     def get_user_like(self, obj):
-        request = self.context.get('request')
+        request = self.context.get('request', None)
         if request and request.user.is_authenticated:
             return obj.users_like.filter(id=request.user.id).exists()
         return False
@@ -61,32 +63,27 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    avg_rating = serializers.SerializerMethodField()
     user_like = serializers.SerializerMethodField()
     count_comments = serializers.SerializerMethodField()
 
     def get_count_comments(self, obj):
         return obj.comments.count()
 
-    def get_avg_rating(self, obj):
-        return obj.comments.aggregate(avg=Avg('rating'))['avg'] or 0
-
     def get_user_like(self, obj):
-        request = self.context.get('request')
+        request = self.context.get('request', None)
         if request and request.user.is_authenticated:
             return obj.users_like.filter(id=request.user.id).exists()
         return False
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'price', 'discount', 'quantity', 'description', 'slug', 'avg_rating', 'user_like',
+        fields = ['id', 'title', 'price', 'discount', 'quantity', 'description', 'slug', 'average_rating', 'user_like',
                   'count_comments', 'group']
         read_only_fields = ['id', 'slug', 'user_like']
 
 
 class GroupSerializer(serializers.ModelSerializer):
     products = ProductSerializer(many=True, read_only=True)
-    image = serializers.ImageField(required=False)
 
     class Meta:
         model = Group
@@ -96,7 +93,6 @@ class GroupSerializer(serializers.ModelSerializer):
 
 class CategoriesGroupsProductsSerializer(serializers.ModelSerializer):
     groups = GroupSerializer(many=True, read_only=True)
-    image = serializers.ImageField(required=False)
 
     class Meta:
         model = Category
@@ -122,11 +118,9 @@ class AttributeKeyValueSerializer(serializers.ModelSerializer):
         exclude = ('id', 'product', 'key', 'value')
 
     def to_representation(self, instance):
-        context = super().to_representation(instance)
-        context.update({
+        return {
             'key_id': instance.key.id,
             'key_name': instance.key.key,
             'value_id': instance.value.id,
-            'value_name': instance.value.value
-        })
-        return context
+            'value_name': instance.value.value,
+        }
